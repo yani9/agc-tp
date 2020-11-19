@@ -69,6 +69,51 @@ def get_arguments():
                         default="OTU.fasta", help="Output file")
     return parser.parse_args()
 
+def read_fasta(amplicon_file, minseqlen):
+    pass
+
+
+def dereplication_fulllength(amplicon_file, minseqlen, mincount):
+    pass
+
+
+def get_chunks(sequence, chunk_size):
+    pass
+
+def get_unique(ids):
+    return {}.fromkeys(ids).keys()
+
+
+def common(lst1, lst2): 
+    return list(set(lst1) & set(lst2))
+
+def cut_kmer(sequence, kmer_size):
+    pass
+
+def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
+    pass
+
+def search_mates(kmer_dict, sequence, kmer_size):
+    pass
+
+def get_identity(alignment_list):
+    pass
+
+def detect_chimera(perc_identity_matrix):
+    pass
+
+def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
+    pass
+
+def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
+    pass
+
+def fill(text, width=80):
+    """Split text with a line return to respect fasta format"""
+    return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
+
+def write_OTU(OTU_list, output_file):
+    pass
 #==============================================================
 # Main program
 #==============================================================
