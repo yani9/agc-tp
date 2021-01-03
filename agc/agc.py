@@ -90,16 +90,7 @@ def common(lst1, lst2):
 def cut_kmer(sequence, kmer_size):
     pass
 
-def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
-    pass
-
-def search_mates(kmer_dict, sequence, kmer_size):
-    pass
-
 def get_identity(alignment_list):
-    pass
-
-def detect_chimera(perc_identity_matrix):
     pass
 
 def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
