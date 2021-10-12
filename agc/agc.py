@@ -68,13 +68,40 @@ def get_arguments():
     parser.add_argument('-o', '-output_file', dest='output_file', type=str,
                         default="OTU.fasta", help="Output file")
     return parser.parse_args()
-
+"""
 def read_fasta(amplicon_file, minseqlen):
-    pass
+    with gzip.open(amplicon_file, "rt") as  monfich:
+        lines=monfich.readlines()
+        for i in range(2,len(lines),3):
+            if len(lines[i])>=minseqlen:
+                yield lines[i].strip()
+""" 
+def read_fasta(amplicon_file, minseqlen):
+    seq = []
+    with gzip.open(amplicon_file, "rt") as  monfich:
+        lines=monfich.readlines()
+        for i in range(1,len(lines)): 
+            if lines[i].startswith(">") or int(i) == len(lines)-1 :
+                if len("".join(seq))>=minseqlen:
+                    yield "".join(seq) 
+                seq = []
+            elif not lines[i].startswith(">"):
+                seq.append(lines[i].strip())
 
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
-    pass
+    """Read amplicon file and return the most commun seq."""
+    sequences = list(read_fasta(amplicon_file, minseqlen))
+    count = Counter()
+    print("ICI ",len(sequences))
+    for seq in sequences: 
+            count[seq]+=1 
+    
+    count_sorted = count.most_common()
+    for seq_occ in count_sorted: 
+        print("OCCURENCE ", seq_occ, seq_occ[1])
+        if seq_occ[1]>=mincount:
+            yield seq_occ
 
 
 def get_unique(ids):
@@ -114,7 +141,23 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     pass
 
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
-    pass
+    seq_list = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
+    otu_list = []
+    otu_list.append(seq_list[0])
+    align = nw 
+    for i in range(len(seq_list)): 
+        for j in range(len(otu_list)): 
+            alignment_list = nw.global_align(seq_list[i][0], otu_list[j][0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
+            identity = get_identity(alignment_list)
+            if identity <=97:
+                otu_list.append([seq_list[i][0], seq_list[i][1]])
+            elif identity > 97 : 
+                if otu_list[j][1]<seq_list[i][1]:
+                    otu_list[j]
+                
+    return(otu_list)
+
+  
 
 def fill(text, width=80):
     """Split text with a line return to respect fasta format"""
@@ -131,9 +174,29 @@ def main():
     Main program function
     """
     # Get arguments
-    args = get_arguments()
+    #args = get_arguments()
     # Votre programme ici
 
+    amplicon_file = "./tests/test_sequences.fasta.gz"
+    minseqlen = 0
+    mincount = 0
+    chunk_size = 100
+    kmer_size = 8
+    seq = read_fasta(amplicon_file, minseqlen)
+    print(next(seq))
+    print(next(seq))
+    print(next(seq))
 
+    
+    #seq_info = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
+    #print("SEQ INFO ",seq_info)
+    seq_list = dereplication_fulllength(amplicon_file, minseqlen, mincount)
+    #print(next(seq_list))
+
+    otu_list = abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size)
+    print("OTU ", otu_list)
+    #print(next(seq_info))
+    #print(next(seq_info))
+    
 if __name__ == '__main__':
     main()
