@@ -25,13 +25,13 @@ import time
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw 
 
-__author__ = "REN Yani & Hippolyte Miziniak"
+__author__ = "REN Yani & MIZINIAK Hippolyte"
 __copyright__ = "Universite Paris Diderot"
-__credits__ = ["REN Yani & Hippolyte Miziniak"]
+__credits__ = ["REN Yani & MIZINIAK Hippolyte"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "REN Yani & MIZINIAK Hippolyte"
+__email__ = "yani.ren@etu.u-paris.fr & hippolyte.miziniak@gmail.com"
 __status__ = "Developpement"
 
 
@@ -92,7 +92,6 @@ def read_fasta(amplicon_file, minseqlen):
                 seq.append(lines[i].strip())
     
 
-
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
     """Read amplicon file and return the most commun seq.
     :Parameters: 
@@ -107,7 +106,7 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount):
     sequences = list(read_fasta(amplicon_file, minseqlen))
     end = time.time() - start 
     print("time read fasta  ",end)
-    print(len(sequences))
+    print("nombre de seq sortie par read_fast() : ",len(sequences))
  
     seq_set= list(sequences)
     count = Counter()
@@ -116,7 +115,7 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount):
     
     count_sorted = count.most_common()
     for seq_occ in count_sorted: 
-        #print("OCCURENCE ", seq_occ, seq_occ[1])
+        #print("SEQ and OCCURENCE ", seq_occ)
         if seq_occ[1]>=mincount:
             yield seq_occ
 
@@ -176,19 +175,20 @@ def detect_chimera(perc_identity_matrix):
     all_stdev = [statistics.stdev(seg_array_id) for seg_array_id in perc_identity_matrix]
     simil_0 = 0
     simil_1 = 0
+    # if the mean of standard deviation value of identity percentage is superior to 5 and ..
     if statistics.mean(all_stdev)>5:
         for seg_array_id in perc_identity_matrix: 
             if seg_array_id[0]>seg_array_id[1]: 
                 simil_0+=1
             elif seg_array_id[0]<seg_array_id[1]:
-                simil_1+=1        
+                simil_1+=1    
+        # if we detect at leat one segment with higher similarity to sequence 1 and one segment having a higher similarity to sequence 2   
         if (simil_0>=1 and simil_1>=1): 
-            return True
+            return True # the seq is chimeric
         else: 
             return False  
     else: 
         return False    
-    
     
 
 def common(lst1, lst2): 
@@ -212,7 +212,7 @@ def get_chunks(sequence, chunk_size):
 
 
 def cut_kmer(sequence, kmer_size):
-    """Cut sequence into kmers"""
+    """Cut sequence into kmers. Return all kmers of input sequence."""
     for i in range(0, len(sequence) - kmer_size + 1):
         yield sequence[i:i+kmer_size]
 
@@ -238,10 +238,9 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
         seq : generator of list, non chimeric sequences and its count.
     """
     start = time.time()
-
     seq_list = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
     print(seq_list)
-    print("nombre seq in dereplication ", len(seq_list))
+    print("nombre seq sortie par dereplication() ", len(seq_list))
     end = time.time() - start
     print("time dereplication ", end)
     seq_nonchim = seq_list[:2]
@@ -251,28 +250,21 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     for i in range(2, len(seq_list)):
         id_parents = search_mates(kmer_dict, seq_list[i][0], kmer_size)
         seq_parents = [seq_list[id][0] for id in id_parents]
-        # s'il y a plusieurs parents, vérifier que les deux premiers sont les plus proches/sont vraiment parents de la seq candidat 
         if len(seq_parents)<2: 
+            # The candidat sequence is considered non chimeric if it has less than 2 parent sequences
             seq_nonchim.append(seq_list[i][0])
-            
             for chunk in get_chunks(seq_list[i][0], chunk_size):
                 kmer_dict.update(get_unique_kmer(kmer_dict, chunk, i, kmer_size))
                 
         else : 
-            
             chunk_candidat = list(get_chunks(seq_list[i][0], chunk_size))
             chunk_parents = []
             for seq in seq_parents: 
                 chunk_parents.append(get_chunks(seq, chunk_size))
-            
-            #print("chunk parents ",chunk_parents)
-            #chunk_parents = [chunk_parent0.extend(chunk_parent1)]
-      
-            perc_identity_matrix = [[] for c in range(4)]
-          
-      
-            #for k in range(len(chunk_parents)): 
-            #    for j in range(len(chunk_candidat)): 
+
+            perc_identity_matrix = [[] for c in range(4)]         
+
+            # Compute the identity percentage alignment between every 4 segments of the 2 parent sequences and candidat sequence.
             for k in range(2): 
                 for j in range(4):
                     alignment_list = nw.global_align(chunk_candidat[j],chunk_parents[k][j], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
@@ -352,12 +344,9 @@ def main():
     # Get arguments
     args = get_arguments()
     # Votre programme ici
-    
-    #amplicon_file = "./tests/test_sequences.fasta.gz" # for test the script
-    OTU_list = abundance_greedy_clustering( args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
-    print("OTU list", OTU_list, len(OTU_list))
-    write_OTU(OTU_list, args.output_file)
-
+    OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
+    print("Number of OTU : {}, the list OTU sequences are write in {} file ", len(OTU_list), args.output_file)
+    #write_OTU(OTU_list, args.output_file)
 
 if __name__ == '__main__':
     main()
