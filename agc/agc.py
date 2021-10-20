@@ -346,7 +346,7 @@ def main():
     # Votre programme ici
     OTU_list = abundance_greedy_clustering(args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
     print("Number of OTU : {}, the list OTU sequences are write in {} file ", len(OTU_list), args.output_file)
-    #write_OTU(OTU_list, args.output_file)
+    write_OTU(OTU_list, args.output_file)
 
 if __name__ == '__main__':
     main()
