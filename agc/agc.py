@@ -19,15 +19,15 @@ import os
 import gzip
 import statistics
 from collections import Counter, defaultdict
-import numpy as np
+#import numpy as np
 import time
 # https://github.com/briney/nwalign3
 # ftp://ftp.ncbi.nih.gov/blast/matrices/
 import nwalign3 as nw 
 
-__author__ = "Your Name"
+__author__ = "REN Yani & Hippolyte Miziniak"
 __copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__credits__ = ["REN Yani & Hippolyte Miziniak"]
 __license__ = "GPL"
 __version__ = "1.0.0"
 __maintainer__ = "Your Name"
@@ -70,14 +70,7 @@ def get_arguments():
     parser.add_argument('-o', '-output_file', dest='output_file', type=str,
                         default="OTU.fasta", help="Output file")
     return parser.parse_args()
-"""
-def read_fasta(amplicon_file, minseqlen):
-    with gzip.open(amplicon_file, "rt") as  monfich:
-        lines=monfich.readlines()
-        for i in range(2,len(lines),3):
-            if len(lines[i])>=minseqlen:
-                yield lines[i].strip()
-""" 
+
 def read_fasta(amplicon_file, minseqlen):
     """Read the amplicon fasta format file and return a list of sequences where respect
     the minimum sequence length for dereplication condition.
@@ -97,6 +90,7 @@ def read_fasta(amplicon_file, minseqlen):
                 seq = []
             elif not lines[i].startswith(">"):
                 seq.append(lines[i].strip())
+    
 
 
 def dereplication_fulllength(amplicon_file, minseqlen, mincount):
@@ -113,6 +107,7 @@ def dereplication_fulllength(amplicon_file, minseqlen, mincount):
     sequences = list(read_fasta(amplicon_file, minseqlen))
     end = time.time() - start 
     print("time read fasta  ",end)
+    print(len(sequences))
  
     seq_set= list(sequences)
     count = Counter()
@@ -145,7 +140,7 @@ def get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size):
             kmer_dict[kmer]=[id_seq]  
         else: 
             kmer_dict[kmer].append(id_seq)
-    return(kmer_dict) 
+    return kmer_dict 
 
 def search_mates(kmer_dict, sequence, kmer_size):
     """Search and return the id of parent sequences for the input sequence.
@@ -158,17 +153,14 @@ def search_mates(kmer_dict, sequence, kmer_size):
     """
     id_seq_list = list()
     kmer_candidat = list(cut_kmer(sequence, kmer_size))
-    #print("ref ", list(kmer_dict.keys()))
-    #print("candidat ",kmer_candidat)
     for kmer in kmer_candidat:
         if kmer in list(kmer_dict.keys()): 
             id_seq_list.extend(kmer_dict[kmer])
-    #print("id seq ",id_seq_list)
 
     two_most_common = Counter(id_seq_list).most_common(2)
     id_parents = [id[0] for id in two_most_common]
     #print("id parents", id_parents)
-    return(id_parents)
+    return id_parents
 
             
 
@@ -191,11 +183,11 @@ def detect_chimera(perc_identity_matrix):
             elif seg_array_id[0]<seg_array_id[1]:
                 simil_1+=1        
         if (simil_0>=1 and simil_1>=1): 
-            return(True)
+            return True
         else: 
-            return(False) 
+            return False  
     else: 
-        return(False)   
+        return False    
     
     
 
@@ -248,15 +240,15 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     start = time.time()
 
     seq_list = list(dereplication_fulllength(amplicon_file, minseqlen, mincount))
+    print(seq_list)
     print("nombre seq in dereplication ", len(seq_list))
     end = time.time() - start
-    print("time dereplicationnnnn ", end)
+    print("time dereplication ", end)
     seq_nonchim = seq_list[:2]
     kmer_dict = defaultdict(list)
     for id_seq, sequence in enumerate(seq_nonchim): 
         kmer_dict.update(get_unique_kmer(kmer_dict, sequence, id_seq, kmer_size))
-    #for i in range(2, 1000):
-    for i in range(2, len(seq_list)): 
+    for i in range(2, len(seq_list)):
         id_parents = search_mates(kmer_dict, seq_list[i][0], kmer_size)
         seq_parents = [seq_list[id][0] for id in id_parents]
         # s'il y a plusieurs parents, vérifier que les deux premiers sont les plus proches/sont vraiment parents de la seq candidat 
@@ -269,8 +261,6 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
         else : 
             
             chunk_candidat = list(get_chunks(seq_list[i][0], chunk_size))
-            #chunk_parent0 = list(get_chunks(seq_parents[0], chunk_size))
-            #chunk_parent1 = list(get_chunks(seq_parents[1], chunk_size))
             chunk_parents = []
             for seq in seq_parents: 
                 chunk_parents.append(get_chunks(seq, chunk_size))
@@ -278,45 +268,19 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
             #print("chunk parents ",chunk_parents)
             #chunk_parents = [chunk_parent0.extend(chunk_parent1)]
       
-            #perc_identity_matrix = [[] for c in range(4)]
             perc_identity_matrix = [[] for c in range(4)]
-            #print("candidat ",chunk_candidat)
-            #print("parent 0", chunk_parent0)
-            #print("parent 1", chunk_parent1)
-            """
-            print("LA matrice ",perc_identity_matrix, chunk_parent0, chunk_parent1)
-            for j in range(len(chunk_candidat)): 
-                for k in range(len(chunk_parent0)): 
-                    print(len(chunk_candidat), len(chunk_parent0), len(chunk_parent1))
-                    #alignment_list = nw.global_align(chunk_parent0[k], chunk_candidat[j], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
-                    alignment_list = nw.global_align(chunk_candidat[j],chunk_parent0[k], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
-
-                    identity = get_identity(alignment_list)   
-                    perc_identity_matrix[k].append(identity)
-
-                    #alignment_list = nw.global_align(chunk_parent1[k], chunk_candidat[j], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
-                    alignment_list = nw.global_align(chunk_candidat[j], chunk_parent1[k],gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
-
-                    identity = get_identity(alignment_list)   
-                    perc_identity_matrix[k].append(identity)  
-            """
-            #print("LA matrice ",perc_identity_matrix, chunk_parent0, chunk_parent1)
-            
+          
+      
             #for k in range(len(chunk_parents)): 
             #    for j in range(len(chunk_candidat)): 
-
             for k in range(2): 
                 for j in range(4):
-                    #print(len(chunk_candidat), len(chunk_parents[0]), len(chunk_parents[1]))
-                    #alignment_list = nw.global_align(chunk_parent0[k], chunk_candidat[j], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
                     alignment_list = nw.global_align(chunk_candidat[j],chunk_parents[k][j], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
 
                     identity = get_identity(alignment_list)   
                     perc_identity_matrix[j].append(identity)
 
-            
-            #print(perc_identity_matrix)
-            
+            #print("matrice ", perc_identity_matrix)
             ischimera = detect_chimera(perc_identity_matrix)
             #print(ischimera)
             if not ischimera: 
@@ -324,18 +288,7 @@ def chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
                 kmer_dict.update(get_unique_kmer(kmer_dict, seq_list[i][0], id_seq, kmer_size))
     for seq in seq_nonchim:  
         yield seq 
-"""
- chunk_chim = get_chunks(chimera_AJ007403, 37)
-    chunk_seq_list = [get_chunks(S000387216, 37)]
-    chunk_seq_list += [get_chunks(S000001688, 37)]
-    perc_identity_matrix = [[] for c in range(len(chunk_chim))]
-    for i in range(len(chunk_seq_list)):
-        for l,chunk in enumerate(chunk_chim):
-            perc_identity_matrix[l].append(get_identity(
-                        nw.global_align(chunk, chunk_seq_list[i][l], 
-                            gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),
-                                                '../agc')) + "/MATCH")))
-"""
+
 def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, kmer_size):
     """Check for each non chimeric sequence if it is an OTU.
     :Parameters: 
@@ -352,26 +305,23 @@ def abundance_greedy_clustering(amplicon_file, minseqlen, mincount, chunk_size, 
     seq_nonchim = list(chimera_removal(amplicon_file, minseqlen, mincount, chunk_size, kmer_size))
     end = time.time() - start 
     print("time chimera ", end)
+    print("CHIM",seq_nonchim)
     otu_list = []
     otu_list.append(seq_nonchim[0])
 
     for i in range(1,len(seq_nonchim)): 
-        for j in range(i+1,len(otu_list)): 
+        flag = True
+        for j in range(len(otu_list)): 
             alignment_list = nw.global_align(seq_nonchim[i][0], otu_list[j][0], gap_open=-1, gap_extend=-1, matrix=os.path.abspath(os.path.join(os.path.dirname(__file__),"MATCH")))
             identity = get_identity(alignment_list)
-            print("identity value ", identity) # c'est ici que ça print les même perc id entre une seq i et plrs seq j
-            if identity <97:
-                otu_list.append(list(seq_nonchim[i]))
-
-            """ 
-            elif identity >= 97 : 
-                if otu_list[j][1]<seq_nonchim[i][1]:
-                    #print("HERE ", otu_list[j], seq_nonchim[i]) 
-                    otu_list[j][0] = seq_nonchim[i][0]
-                    otu_list[j][1] = seq_nonchim[i][1]
-            """  
+            #print("identity value ", identity) 
+            if identity > 97:
+                flag = False
+                break
+        if flag:
+           otu_list.append(seq_nonchim[i])
     
-    return(otu_list)
+    return otu_list
 
   
 
@@ -387,7 +337,7 @@ def write_OTU(OTU_list, output_file):
     """
     with open(output_file, "wt") as filout: 
         for i, otu in enumerate(OTU_list): 
-            filout.write("OTU_{} occurence:{}\n".format(i, otu[1])) 
+            filout.write(">OTU_{} occurrence:{}\n".format(i+1, otu[1])) 
             seq = otu[0]+"\n" 
             filout.write(str(fill(seq))) 
 
@@ -400,29 +350,16 @@ def main():
     Main program function
     """
     # Get arguments
-    #args = get_arguments()
+    args = get_arguments()
     # Votre programme ici
-    # python agc.py -i ./data/amplicon_file.fasta.gz -s 400 -m 10 -c 10 -k 8 -o OTU_file.fasta 
-    #amplicon_file = "./tests/test_sequences.fasta.gz"
-    amplicon_file = "/data/amplicon.fasta.gz"
-    minseqlen = 0
-    mincount = 0
-    chunk_size = 100
-    kmer_size = 8
     
-
-    # for test 
-    #output_file = "/media/yren/9858-2B38/M2/agc-tp/data/output_OTU.fasta"
-    output_file = "/home/courage/agc-tp/data/output_otu.fasta"
-    #OTU_list = abundance_greedy_clustering(os.path.abspath(os.path.join(os.path.dirname(__file__), "/home/courage/agc-tp/tests/test_sequences.fasta.gz")), 200, 3, 50, 8)
-    #OTU_list = abundance_greedy_clustering(os.path.abspath(os.path.join(os.path.dirname(__file__), "/home/courage/agc-tp/data/amplicon.fasta.gz")), 200, 3, 50, 8)
-    OTU_list = abundance_greedy_clustering(os.path.abspath(os.path.join(os.path.dirname(__file__), "/home/courage/agc-tp/data/amplicon.fasta.gz")), 400, 10, 100, 8)
-
-    #OTU_list = abundance_greedy_clustering(os.path.abspath(os.path.join(os.path.dirname(__file__), "/media/yren/9858-2B38/M2/agc-tp/data/amplicon.fasta.gz")), 200, 3, 50, 8)
-    print("otu", OTU_list, len(OTU_list))
-    write_OTU(OTU_list, output_file)
+    #amplicon_file = "./tests/test_sequences.fasta.gz" # for test the script
+    OTU_list = abundance_greedy_clustering( args.amplicon_file, args.minseqlen, args.mincount, args.chunk_size, args.kmer_size)
+    print("OTU list", OTU_list, len(OTU_list))
+    write_OTU(OTU_list, args.output_file)
 
 
 if __name__ == '__main__':
     main()
+
 
